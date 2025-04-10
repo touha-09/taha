@@ -1,0 +1,56 @@
+#include "header.h"
+#include <stdio.h>
+#include <string.h>
+
+EnigmeImage charger_enigme(const char *chemin) {
+    EnigmeImage e;
+    char path[256];
+
+    snprintf(path, sizeof(path), "%s/question.png", chemin);
+    e.img_question = IMG_Load(path);
+
+    for (int i = 0; i < 3; i++) {
+        snprintf(path, sizeof(path), "%s/rep%d.png", chemin, i + 1);
+        e.img_reponses[i] = IMG_Load(path);
+    }
+
+    snprintf(path, sizeof(path), "%s/solution.txt", chemin);
+    FILE *f = fopen(path, "r");
+    fscanf(f, "%d", &e.bonne_reponse);
+    fclose(f);
+
+    e.pos_question.x = 250;
+    e.pos_question.y = 50;
+
+    for (int i = 0; i < 3; i++) {
+        e.pos_reponses[i].x = 150 + i * 200;
+        e.pos_reponses[i].y = 300;
+    }
+
+    e.etat = 0;
+    return e;
+}
+
+void liberer_enigme(EnigmeImage *e) {
+    SDL_FreeSurface(e->img_question);
+    for (int i = 0; i < 3; i++) {
+        SDL_FreeSurface(e->img_reponses[i]);
+    }
+}
+
+int verifier_click(SDL_Event *event, EnigmeImage *e) {
+    int x = event->button.x;
+    int y = event->button.y;
+
+    for (int i = 0; i < 3; i++) {
+        SDL_Rect pos = e->pos_reponses[i];
+        int w = e->img_reponses[i]->w;
+        int h = e->img_reponses[i]->h;
+
+        if (x >= pos.x && x <= pos.x + w &&
+            y >= pos.y && y <= pos.y + h) {
+            return i;
+        }
+    }
+    return -1;
+}
