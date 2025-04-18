@@ -1,0 +1,209 @@
+main.c
+
+
+#include "game.h"
+
+int main(int argc, char* argv[]) {
+    SDL_Surface* screen = NULL;
+    Game game;
+    int running = 1;
+
+    // Initialisation de SDL
+    SDL_Init(SDL_INIT_VIDEO);
+    screen = SDL_SetVideoMode(396, 396, 32, SDL_SWSURFACE);
+    SDL_WM_SetCaption("Pyramids of Giza", NULL);
+
+    // Initialiser le jeu
+    initGame(&game, screen);
+
+    // Boucle principale
+    while (running) {
+        handleEvents(&game, &running);
+        drawGame(&game);
+        SDL_Delay(16); // Petite pause pour éviter 100% CPU
+    }
+
+    // Libérer la mémoire
+    cleanGame(&game);
+    SDL_Quit();
+    return 0;
+}
+
+
+
+
+game.h 
+
+#ifndef GAME_H
+#define GAME_H
+
+#include <SDL/SDL.h>
+#include <stdio.h>
+
+#define NUM_PIECES 3
+
+typedef struct {
+    SDL_Surface* img;
+    SDL_Rect pos;
+    int dragging;
+    int isBomb;
+} Piece;
+
+typedef struct {
+    SDL_Surface* screen;
+    SDL_Surface* bg;
+    Piece pieces[NUM_PIECES];
+    SDL_Rect slots[3];
+    int placed[3];
+    int gameOver;
+    int success;
+} Game;
+
+void initGame(Game* game, SDL_Surface* screen);
+void drawGame(Game* game);
+void handleEvents(Game* game, int* running);
+void cleanGame(Game* game);
+SDL_Surface* loadImage(const char* path);
+
+#endif
+
+
+
+
+
+game.c
+
+
+#include "game.h"
+
+// Fonction pour charger une image BMP et la convertir au format écran
+SDL_Surface* loadImage(const char* path) {
+    SDL_Surface* temp = SDL_LoadBMP(path);
+    if (!temp) {
+        printf("Erreur de chargement: %s\n", path);
+        return NULL;
+    }
+    return SDL_DisplayFormat(temp);
+}
+
+// Initialisation du jeu
+void initGame(Game* game, SDL_Surface* screen) {
+    game->screen = screen;
+    game->bg = loadImage("assets/enigme-2.bmp");
+
+    const char* paths[NUM_PIECES] = {
+        "assets/treasure.bmp",
+        "assets/star.bmp",
+        "assets/bomb.bmp" // mauvaise image
+    };
+
+    for (int i = 0; i < NUM_PIECES; i++) {
+        game->pieces[i].img = loadImage(paths[i]);
+        game->pieces[i].pos.x = 50 + i * 100;
+        game->pieces[i].pos.y = 320;
+        game->pieces[i].dragging = 0;
+        game->pieces[i].isBomb = (i == 2); // bomb est à l'indice 2
+    }
+
+    // Les 3 cases vides où on peut glisser les images
+    game->slots[0] = (SDL_Rect){132, 132, 64, 64};
+    game->slots[1] = (SDL_Rect){264, 132, 64, 64};
+    game->slots[2] = (SDL_Rect){132, 264, 64, 64};
+
+    for (int i = 0; i < 3; i++)
+        game->placed[i] = 0;
+
+    game->gameOver = 0;
+    game->success = 0;
+}
+
+// Gérer les événements (clic, glissement)
+void handleEvents(Game* game, int* running) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_QUIT)
+            *running = 0;
+
+        if (game->gameOver) return;
+
+        if (e.type == SDL_MOUSEBUTTONDOWN) {
+            for (int i = 0; i < NUM_PIECES; i++) {
+                SDL_Rect r = game->pieces[i].pos;
+                if (e.button.x >= r.x && e.button.x <= r.x + 64 &&
+                    e.button.y >= r.y && e.button.y <= r.y + 64) {
+                    game->pieces[i].dragging = 1;
+                }
+            }
+        }
+
+        if (e.type == SDL_MOUSEBUTTONUP) {
+            for (int i = 0; i < NUM_PIECES; i++) {
+                if (game->pieces[i].dragging) {
+                    game->pieces[i].dragging = 0;
+                    for (int j = 0; j < 3; j++) {
+                        if (!game->placed[j]) {
+                            SDL_Rect s = game->slots[j];
+                            if (e.button.x >= s.x && e.button.x <= s.x + 64 &&
+                                e.button.y >= s.y && e.button.y <= s.y + 64) {
+                                game->pieces[i].pos = s;
+                                game->placed[j] = 1;
+                                game->gameOver = 1;
+
+                                if (game->pieces[i].isBomb)
+                                    game->success = 0;
+                                else
+                                    game->success = 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (e.type == SDL_MOUSEMOTION) {
+            for (int i = 0; i < NUM_PIECES; i++) {
+                if (game->pieces[i].dragging) {
+                    game->pieces[i].pos.x = e.motion.x - 32;
+                    game->pieces[i].pos.y = e.motion.y - 32;
+                }
+            }
+        }
+    }
+}
+
+// Dessiner l'interface du jeu
+void drawGame(Game* game) {
+    SDL_BlitSurface(game->bg, NULL, game->screen, NULL);
+
+    for (int i = 0; i < NUM_PIECES; i++) {
+        SDL_BlitSurface(game->pieces[i].img, NULL, game->screen, &game->pieces[i].pos);
+    }
+
+    // Affichage de succès/échec
+    if (game->gameOver) {
+        SDL_Rect msg = {10, 10, 100, 30};
+        Uint32 color = game->success ? SDL_MapRGB(game->screen->format, 0, 255, 0)
+                                     : SDL_MapRGB(game->screen->format, 255, 0, 0);
+        SDL_FillRect(game->screen, &msg, color);
+    }
+
+    SDL_Flip(game->screen);
+}
+
+// Libération de la mémoire
+void cleanGame(Game* game) {
+    for (int i = 0; i < NUM_PIECES; i++)
+        if (game->pieces[i].img)
+            SDL_FreeSurface(game->pieces[i].img);
+    if (game->bg)
+        SDL_FreeSurface(game->bg);
+}
+
+
+
+
+
+
+
+
+
