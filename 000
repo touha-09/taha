@@ -1,0 +1,8 @@
+puzzle: main.o game.o  # Ajoutez game.o ici
+    gcc main.o game.o -o puzzle -lSDL -lSDL_image -lSDL_mixer -lSDL_ttf
+
+main.o: main.c game.h
+    gcc -c main.c
+
+game.o: game.c game.h  # Ajoutez cette règle
+    gcc -c game.c
