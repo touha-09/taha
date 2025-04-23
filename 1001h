@@ -1,0 +1,33 @@
+#ifndef HEADER_H
+#define HEADER_H
+
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <SDL/SDL_ttf.h>
+
+#define SCREEN_WIDTH 800
+#define SCREEN_HEIGHT 600
+#define PIECE_SIZE 100
+
+// Structure pour une pièce du puzzle
+typedef struct {
+    SDL_Surface* image;    // Image de la pièce
+    SDL_Rect pos;          // Position de la pièce
+    int targetRow;         // Ligne cible de la pièce
+    int targetCol;         // Colonne cible de la pièce
+    int isPlaced;          // Si la pièce est à sa place
+} Piece;
+
+// Fonction pour charger une image
+SDL_Surface* loadImage(const char* path);
+
+// Fonction pour mélanger les pièces du puzzle
+void shufflePieces(Piece* pieces, int size);
+
+// Fonction pour afficher du texte centré à l'écran
+void showText(SDL_Surface* screen, const char* msg, SDL_Color color);
+
+// Fonction pour afficher l'image de fin
+void displayEndImage(SDL_Surface* screen, const char* path);
+
+#endif
