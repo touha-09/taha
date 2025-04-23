@@ -1,0 +1,48 @@
+#include "header.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+// Fonction pour charger une image et la convertir pour SDL
+SDL_Surface* loadImage(const char* path) {
+    SDL_Surface* tmp = IMG_Load(path);
+    if (!tmp) return NULL;
+    SDL_Surface* img = SDL_DisplayFormatAlpha(tmp);  // Optimisation pour affichage avec transparence
+    SDL_FreeSurface(tmp);
+    return img;
+}
+
+// Fonction pour mélanger les pièces du puzzle
+void shufflePieces(Piece* pieces, int size) {
+    srand(time(NULL)); // Initialisation du générateur de nombres aléatoires
+
+    for (int i = 0; i < size; i++) {
+        int j = rand() % size;
+        Piece temp = pieces[i];
+        pieces[i] = pieces[j];
+        pieces[j] = temp;
+    }
+}
+
+// Fonction pour afficher un texte centré à l'écran
+void showText(SDL_Surface* screen, const char* msg, SDL_Color color) {
+    TTF_Font* font = TTF_OpenFont("arial.ttf", 36);
+    if (!font) return;
+    SDL_Surface* text = TTF_RenderText_Solid(font, msg, color);
+    if (text) {
+        SDL_Rect pos = { (SCREEN_WIDTH - text->w)/2, (SCREEN_HEIGHT - text->h)/2 };
+        SDL_BlitSurface(text, NULL, screen, &pos);  // Affichage du texte
+        SDL_FreeSurface(text);
+    }
+    TTF_CloseFont(font);
+}
+
+// Fonction pour afficher une image de fin
+void displayEndImage(SDL_Surface* screen, const char* path) {
+    SDL_Surface* endImage = loadImage(path);
+    if (endImage) {
+        SDL_Rect pos = { (SCREEN_WIDTH - endImage->w) / 2, (SCREEN_HEIGHT - endImage->h) / 2 };
+        SDL_BlitSurface(endImage, NULL, screen, &pos);
+        SDL_FreeSurface(endImage); // Libération de la surface après utilisation
+    }
+}
